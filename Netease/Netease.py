@@ -2,6 +2,11 @@
 import requests, hashlib, sys, click, re, base64, binascii, json, os
 from Crypto.Cipher import AES
 from http import cookiejar
+from xml.dom.minidom import parse
+import xml.dom.minidom
+import html
+import playListXmlParse
+
 
 """
 Website:http://cuijiahua.com
@@ -76,6 +81,31 @@ class Crawler():
 		self.timeout = timeout
 		self.ep = Encrypyed()
 
+	def get_request(self, url):
+		"""
+		Get请求
+		:return: 字典
+		"""
+		headers = {
+			"Accept": "*/*",
+			"Accept-Encoding": "br,gzip,deflate",
+			'Accept-Language': 'zh-CN,zh;q=0.8,gl;q=0.6,zh-TW;q=0.4;',
+			'Referer': 'http://music.163.com/search/',
+			'Content-Type': 'text/html;charset=utf8',
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'
+		}
+		# 'Referer':'https://music.163.com/discover/playlist',
+		# 'Referer': 'https://music.163.com/user/home?id=376807422',
+		print('aaaaaaaaaaaaaaaaa')
+		resp = requests.get(url=url,headers=headers)
+		print('bbbbbbbbbbb')
+		print(resp.status_code)
+		print(resp.reason)
+		if resp.status_code != 200 :  # 获取响应状态码
+			click.echo('get_request error')
+		else :
+			return resp.content # 获取响应消息
+
 	def post_request(self, url, params):
 		"""
 		Post请求
@@ -89,6 +119,18 @@ class Crawler():
 			click.echo('post_request error')
 		else:
 		    return result
+
+	def playList(self, listId):
+		"""
+		搜索API
+		:params listId: 歌单id
+		:return: html.
+		"""
+
+		url = 'https://music.163.com/playlist?id='+listId
+		print('获取列表：'+url)
+		result = self.get_request(url)
+		return result
 
 	def search(self, search_content, search_type, limit=9):
 		"""
@@ -156,12 +198,13 @@ class Crawler():
 		"""
 		if not os.path.exists(folder):
 			os.makedirs(folder)
-		fpath = os.path.join(folder, str(song_num) + '_' + song_name + '.mp3')
+		# fpath = os.path.join(folder, str(song_num) + '_' + song_name + '.mp3')
+		fpath = os.path.join(folder, song_name + '.mp3')
 		if sys.platform == 'win32' or sys.platform == 'cygwin':
 			valid_name = re.sub(r'[<>:"/\\|?*]', '', song_name)
 			if valid_name != song_name:
 				click.echo('{} will be saved as: {}.mp3'.format(song_name, valid_name))
-				fpath = os.path.join(folder, str(song_num) + '_' + valid_name + '.mp3')
+				fpath = os.path.join(folder, valid_name + '.mp3')
 		
 		if not os.path.exists(fpath):
 			resp = self.download_session.get(song_url, timeout=self.timeout, stream=True)
@@ -185,6 +228,86 @@ class Netease():
 		self.folder = '.' if folder is None else folder
 		self.quiet = quiet
 
+	def get_play_list(self, listId):
+		"""
+		根据歌单ID获取歌单列表
+		:params listId: 歌单ID
+		"""
+
+		try:
+			list = self.crawler.playList(listId)
+		except:
+			click.echo('get_play_list error')
+		# 如果找到了音乐, 则下载
+		if list != None:
+			# self.download_song_by_id(song.song_id, song.song_name, song.song_num, self.folder)
+			# self.download_song_by_id('4331105', 'Loves Me Not', '1', self.folder)
+			self.parse_play_list(list)
+
+	def parse_play_list(self, list):
+		"""
+		解析列表html列表
+		:params list: html 
+		"""
+		'''
+		bytes 与 str 格式互转
+		解决办法非常的简单，只需要用上python的bytes和str两种类型转换的函数encode()、decode()即可！
+		str通过encode()方法可以编码为指定的bytes；
+		反过来，如果我们从网络或磁盘上读取了字节流，那么读到的数据就是bytes。要把bytes变为str，就需要用decode()方法；
+		text = list.decode()
+		'''
+		'''
+		使用minidom解析器打开 XML 文档
+		1、unescap - 反转义  escape - 转义 
+		import html
+		text = html.escape(list.decode())
+
+		2、 过滤特殊字符
+		text = re.sub(u"[\x00-\x08\x0b-\x0c\x0e-\x1f]+",u"",text)
+
+		3、 dom 解析 
+		https://www.runoob.com/python3/python3-xml-processing.html
+
+		DOMTree = xml.dom.minidom.parseString(text)
+		collection = DOMTree.documentElement
+		if collection.hasAttribute("shelf"):
+			print ("Root element : %s" % collection.getAttribute("shelf"))
+		# 在集合中获取所有电影
+		ul = collection.getElementsByTagName("ul")
+		print(ul)
+		# 打印每部电影的详细信息
+		for movie in ul:
+			print ("*****Movie*****")
+		if movie.hasAttribute("title"):
+			print ("Title: %s" % movie.getAttribute("title"))
+
+		type = movie.getElementsByTagName('type')[0]
+		print ("Type: %s" % type.childNodes[0].data)
+		format = movie.getElementsByTagName('format')[0]
+		print ("Format: %s" % format.childNodes[0].data)
+		rating = movie.getElementsByTagName('rating')[0]
+		print ("Rating: %s" % rating.childNodes[0].data)
+		description = movie.getElementsByTagName('description')[0]
+		print ("Description: %s" % description.childNodes[0].data)
+		'''
+		print('=======================start download=========')
+		text = list.decode()
+		# print(text)
+		songlist = playListXmlParse.parseAllSongForString(text)
+		pattern = re.compile(r'">')
+		num = 0
+		for song in songlist:
+			# print(song)
+			result = re.split(pattern,song)
+			if len(result) == 2 :
+				print('num:',num,'----------------------------------')
+				print(result)
+				self.download_song_by_id(result[0], result[1], num, self.folder)
+				num = num + 1
+				print('---------------------------------------------')
+
+		print('=======================end download=======')
+
 	def download_song_by_search(self, song_name, song_num):
 		"""
 		根据歌曲名进行搜索
@@ -198,7 +321,10 @@ class Netease():
 			click.echo('download_song_by_serach error')
 		# 如果找到了音乐, 则下载
 		if song != None:
-			self.download_song_by_id(song.song_id, song.song_name, song.song_num, self.folder)
+			# self.download_song_by_id(song.song_id, song.song_name, song.song_num, self.folder)
+			self.download_song_by_id('4331105', 'Loves Me Not', '1', self.folder)
+
+
 
 	def download_song_by_id(self, song_id, song_name, song_num, folder='.'):
 		"""
@@ -220,17 +346,26 @@ class Netease():
 
 
 if __name__ == '__main__':
+	print('--------start')
 	timeout = 60
 	output = 'Musics'
 	quiet = True
 	cookie_path = 'Cookie'
 	netease = Netease(timeout, output, quiet, cookie_path)
+	# ----
+	play_list = netease.get_play_list('2925448348')
+
+	exit(0)
+	# ---
 	music_list_name = 'music_list.txt'
 	# 如果music列表存在, 那么开始下载
 	if os.path.exists(music_list_name):
 		with open(music_list_name, 'r') as f:
 			music_list = list(map(lambda x: x.strip(), f.readlines()))
+			print(music_list)
+
 		for song_num, song_name in enumerate(music_list):
+			print('num',song_num, song_name)
 			netease.download_song_by_search(song_name,song_num + 1)
 	else:
 		click.echo('music_list.txt not exist.')
