@@ -6,6 +6,7 @@ from xml.dom.minidom import parse
 import xml.dom.minidom
 import html
 import playListXmlParse
+import MP3Info
 
 
 """
@@ -58,6 +59,9 @@ class Song():
 		self.song_name = song_name
 		self.song_num = song_num
 		self.song_url = '' if song_url is None else song_url
+		self.song_title = song_name
+		self.song_artist = ''
+		self.song_album = ''
 
 class Crawler():
 	"""
@@ -188,7 +192,35 @@ class Crawler():
 		else:
 			return song_url
 
-	def get_song_by_url(self, song_url, song_name, song_num, folder):
+	def get_song_info_meta(self, song_name, song_id):
+		'''
+		获取音乐的描述信息
+		:params song_name: 音乐名
+		:params song_id: 音乐ID<int>.
+		:return: 歌曲信息
+		'''
+		headers = {
+			"Accept": "*/*",
+			"Accept-Encoding": "br,gzip,deflate",
+			'Accept-Language': 'zh-CN,zh;q=0.8,gl;q=0.6,zh-TW;q=0.4;',
+			'Referer': 'https://music.163.com/',
+			'Content-Type': 'text/html;charset=utf8',
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'
+		}
+		# 'Referer':'https://music.163.com/discover/playlist',
+		# 'Referer': 'https://music.163.com/user/home?id=376807422',
+		info_url = 'http://music.163.com/song?id={}'.format(song_id)
+		# print(info_url)
+		resp = requests.get(url=info_url,headers=headers)
+		# print('获取歌曲信息bbbbbbbbbbbbbbbbb')
+		# print(resp.status_code)
+		# print(resp.reason)
+		if resp.status_code != 200 :  # 获取响应状态码
+			click.echo('get_song_info_meta error')
+		else :
+			return resp.content # 获取响应消息
+
+	def get_song_by_url(self, song_url, song_name, song_artist, song_num, folder):
 		"""
 		下载歌曲到本地
 		:params song_url: 歌曲下载地址
@@ -199,7 +231,7 @@ class Crawler():
 		if not os.path.exists(folder):
 			os.makedirs(folder)
 		# fpath = os.path.join(folder, str(song_num) + '_' + song_name + '.mp3')
-		fpath = os.path.join(folder, song_name + '.mp3')
+		fpath = os.path.join(folder, song_artist + '-' + song_name + '.mp3')
 		if sys.platform == 'win32' or sys.platform == 'cygwin':
 			valid_name = re.sub(r'[<>:"/\\|?*]', '', song_name)
 			if valid_name != song_name:
@@ -321,10 +353,21 @@ class Netease():
 			click.echo('download_song_by_serach error')
 		# 如果找到了音乐, 则下载
 		if song != None:
-			# self.download_song_by_id(song.song_id, song.song_name, song.song_num, self.folder)
-			self.download_song_by_id('4331105', 'Loves Me Not', '1', self.folder)
+			self.download_song_by_id(song.song_id, song.song_name, song.song_num, self.folder)
 
-
+	def getMp3Meta(self, song_id, song_name) : 
+		'''
+		设置歌曲信息
+		'''
+		try:
+			res = self.crawler.get_song_info_meta(song_name, song_id)
+			html_text = res.decode()
+			sonDict = playListXmlParse.parseSongInfoForHtml(html_text)
+			sonDict['title'] = song_name
+			# print(sonDict)
+		except:
+			click.echo('getMp3Meta error')	
+		return sonDict	
 
 	def download_song_by_id(self, song_id, song_name, song_num, folder='.'):
 		"""
@@ -336,11 +379,18 @@ class Netease():
 		"""
 		try:
 			url = self.crawler.get_song_url(song_id)
+			info = self.getMp3Meta(song_id, song_name)
+			song_artist = info['artist']
 			# 去掉非法字符
 			song_name = song_name.replace('/', '')
 			song_name = song_name.replace('.', '')
-			self.crawler.get_song_by_url(url, song_name, song_num, folder)
-
+			song_artist = song_artist.replace('/', '&')
+			song_artist = song_artist.replace('.', '')
+			self.crawler.get_song_by_url(url, song_name, song_artist, song_num, folder)
+			pwd = os.getcwd()
+			fpath = pwd + '/' + folder + '/' + song_artist + '-' + song_name + '.mp3'
+			print('设置mp3信息....')
+			MP3Info.SetMp3Info(fpath, info)
 		except:
 			click.echo('download_song_by_id error')
 
@@ -353,7 +403,7 @@ if __name__ == '__main__':
 	cookie_path = 'Cookie'
 	netease = Netease(timeout, output, quiet, cookie_path)
 	# ----
-	play_list = netease.get_play_list('2925448348')
+	play_list = netease.get_play_list('3778678')
 
 	exit(0)
 	# ---
