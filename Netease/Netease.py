@@ -100,11 +100,11 @@ class Crawler():
 		}
 		# 'Referer':'https://music.163.com/discover/playlist',
 		# 'Referer': 'https://music.163.com/user/home?id=376807422',
-		print('aaaaaaaaaaaaaaaaa')
+		# print('aaaaaaaaaaaaaaaaa')
 		resp = requests.get(url=url,headers=headers)
-		print('bbbbbbbbbbb')
-		print(resp.status_code)
-		print(resp.reason)
+		# print('bbbbbbbbbbb')
+		# print(resp.status_code)
+		# print(resp.reason)
 		if resp.status_code != 200 :  # 获取响应状态码
 			click.echo('get_request error')
 		else :
@@ -231,7 +231,7 @@ class Crawler():
 		if not os.path.exists(folder):
 			os.makedirs(folder)
 		# fpath = os.path.join(folder, str(song_num) + '_' + song_name + '.mp3')
-		fpath = os.path.join(folder, song_artist + '-' + song_name + '.mp3')
+		fpath = os.path.join(folder, song_artist + ' - ' + song_name + '.mp3')
 		if sys.platform == 'win32' or sys.platform == 'cygwin':
 			valid_name = re.sub(r'[<>:"/\\|?*]', '', song_name)
 			if valid_name != song_name:
@@ -388,7 +388,7 @@ class Netease():
 			song_artist = song_artist.replace('.', '')
 			self.crawler.get_song_by_url(url, song_name, song_artist, song_num, folder)
 			pwd = os.getcwd()
-			fpath = pwd + '/' + folder + '/' + song_artist + '-' + song_name + '.mp3'
+			fpath = pwd + '/' + folder + '/' + song_artist + ' - ' + song_name + '.mp3'
 			print('设置mp3信息....')
 			MP3Info.SetMp3Info(fpath, info)
 		except:
@@ -403,7 +403,7 @@ if __name__ == '__main__':
 	cookie_path = 'Cookie'
 	netease = Netease(timeout, output, quiet, cookie_path)
 	# ----
-	play_list = netease.get_play_list('3778678')
+	play_list = netease.get_play_list('2250011882')
 
 	exit(0)
 	# ---
