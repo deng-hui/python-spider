@@ -231,7 +231,7 @@ class Crawler():
 		if not os.path.exists(folder):
 			os.makedirs(folder)
 		# fpath = os.path.join(folder, str(song_num) + '_' + song_name + '.mp3')
-		fpath = os.path.join(folder, song_artist + ' - ' + song_name + '.mp3')
+		fpath = os.path.join(folder, song_name + '.mp3')#song_artist + ' - ' + 
 		if sys.platform == 'win32' or sys.platform == 'cygwin':
 			valid_name = re.sub(r'[<>:"/\\|?*]', '', song_name)
 			if valid_name != song_name:
@@ -388,7 +388,7 @@ class Netease():
 			song_artist = song_artist.replace('.', '')
 			self.crawler.get_song_by_url(url, song_name, song_artist, song_num, folder)
 			pwd = os.getcwd()
-			fpath = pwd + '/' + folder + '/' + song_artist + ' - ' + song_name + '.mp3'
+			fpath = pwd + '/' + folder + '/' + song_name + '.mp3' #song_artist + ' - ' + 
 			print('设置mp3信息....')
 			MP3Info.SetMp3Info(fpath, info)
 		except:
@@ -403,7 +403,7 @@ if __name__ == '__main__':
 	cookie_path = 'Cookie'
 	netease = Netease(timeout, output, quiet, cookie_path)
 	# ----
-	play_list = netease.get_play_list('2250011882')
+	play_list = netease.get_play_list('551095546')
 
 	exit(0)
 	# ---
